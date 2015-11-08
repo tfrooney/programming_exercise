@@ -1,6 +1,4 @@
 """
-
-
 Create an implementation of the following:
 
 A line of credit product.  This is like a credit card except theres no card.
@@ -57,19 +55,19 @@ class CreditAccount(object):
         self.interest_rate = rate
         self.credit_limit = limit
         self.balance = 0
-        self.finance_charges = 0
+        self.finance_charges = 0.0
 
     def close_30day_period(self):
         self.balance = self.balance * self.interest_rate
 
     def show_balance(self):
-        print 'balance:' + str(self.balance) + ' acct:' + str(self.account_id)
+        print 'balance:' + '${0:.2f}'.format(self.balance) + ' acct:' + str(self.account_id)
 
     def show_finance_charges(self):
-        print 'finance charges:' + str(self.finance_charges) + ' acct:' + str(self.account_id)
+        print 'finance charges:' + '${0:.2f}'.format(self.finance_charges) + ' acct:' + str(self.account_id)
 
     def show_total_payment(self):
-        print 'Account:' + str(self.account_id) + ' Total Payment:' + str(self.balance + self.finance_charges)
+        print 'Account:' + str(self.account_id) + ' Total Payment:' + '${0:.2f}'.format(self.balance + self.finance_charges)
 
 
 class Transaction(object):
@@ -77,13 +75,10 @@ class Transaction(object):
     Track activity on an account
 
     Attributes
-        transaction_id
         account_id
         day
         amount
-
     """
-    transaction_id = 1
 
     def __init__(self, acct_id, day, amount):
         self.account_id = acct_id
@@ -107,8 +102,8 @@ class TransactionService(object):
         self.transactions = []
 
     def withdraw(self, acct, day, amount):
-        print 'withdraw:' + str(amount) + ' acct:' + str(acct.account_id)
-        if acct.credit_limit > (acct.balance + acct.finance_charges + amount):
+        print 'Account:' + str(acct.account_id) + ' Withdraw:' + '${0:.2f}'.format(amount)
+        if acct.credit_limit >= (acct.balance + acct.finance_charges + amount):
             acct.balance = acct.balance + amount
             t = Transaction(acct.account_id, day, amount)
             self.insert_transaction(t)
@@ -116,8 +111,8 @@ class TransactionService(object):
             print 'ERROR: Exceeded Credit Limit'
 
     def payment(self, acct, day, amount):
-        print 'payment:' + str(amount) + ' acct:' + str(acct.account_id)
-        if 0 < (acct.balance + acct.finance_charges) - amount:
+        print 'Account:' + str(acct.account_id) + ' Payment:' + '${0:.2f}'.format(amount)
+        if 0 <= (acct.balance + acct.finance_charges) - amount:
             acct.balance = acct.balance - amount
             t = Transaction(acct.account_id, day, 0 - amount)
             self.insert_transaction(t)
@@ -131,15 +126,14 @@ class TransactionService(object):
         print 'transactions: ' + ' acct:' + str(acct_id) + ' '
         for txn in self.transactions:
             if txn.get_acct() == acct_id:
-                print 'txn id:' + str(txn.get_acct()) + ' day:' + str(txn.get_day()) + ' amt:' + str(txn.get_amount())
+                print ' day:' + str(txn.get_day()) + ' amt:' + str(txn.get_amount())
 
     def charge_interest(self, acct):
         """
         run at the end of the payment period
         balance * rate / days in year * days for each balance level
-
         """
-        print 'charge interest'
+        print 'Charge Interest'
         interest = 0
         start_day_of_balance = 0
         balance = 0
@@ -147,16 +141,18 @@ class TransactionService(object):
             if txn.get_acct() == acct.account_id:
                 days = txn.get_day() - start_day_of_balance
                 interest = balance * acct.interest_rate / 365 * days
-                print 'b:' + str(balance) + ' r:' + str(acct.interest_rate) + ' d:' + str(days)
                 start_day_of_balance = txn.get_day()
                 balance += txn.get_amount()
                 acct.finance_charges += interest
-                print 'txn:' + str(txn.get_day()) + ' days:' + str(days) + ' int:' + str(interest) + ' fin:' + str(acct.finance_charges) + ' firstday:' + str(start_day_of_balance) + ' bal:' + str(balance) + ' amt:' + str(txn.get_amount())
+                #print 'txn:' + str(txn.get_day()) + ' days:' + str(days) + ' int:' + str(interest) + ' fin:' + str(acct.finance_charges) + ' firstday:' + str(start_day_of_balance) + ' bal:' + str(balance) + ' amt:' + str(txn.get_amount())
 
         days = self.period - start_day_of_balance
         acct.finance_charges += balance * acct.interest_rate / 365 * days
-        print ' days:' + str(days) + ' int:' + str(interest) + ' fin:' + str(acct.finance_charges) + ' firstday:' + str(start_day_of_balance) + ' bal:' + str(balance) + ' amt:' + str(txn.get_amount())
-        print 'acct:' + str(acct.account_id) + ' fin:' + str(acct.finance_charges)
+        #print 'acct:' + str(acct.account_id) + ' days:' + str(days) + ' int:' + str(interest) + ' fin:' + str(acct.finance_charges) + ' firstday:' + str(start_day_of_balance) + ' bal:' + str(balance) + ' amt:' + str(txn.get_amount())
+
+    def reset_period(self):
+        # preceding period transactions could be archived
+        self.transactions = []
 
 
 def test_harness():
@@ -164,6 +160,8 @@ def test_harness():
     acct1 = CreditAccount(ts, 1, 0.30, 1000)
     ts.withdraw(acct1, 1, 300)
     ts.withdraw(acct1, 5, 300)
+    ts.withdraw(acct1, 5, 1300)
+    ts.payment(acct1, 10, 600)
     ts.payment(acct1, 10, 600)
     acct1.show_balance()
     acct2 = CreditAccount(ts, 2, 0.30, 2000)
@@ -190,8 +188,6 @@ def test_harness():
     ts.withdraw(ex2, 25, 100)
     ts.charge_interest(ex2)
     ex2.show_total_payment()
-
-    ts.withdraw(ex2, 0, 500)
 
 
 if __name__ == "__main__":
